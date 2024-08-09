@@ -1,6 +1,10 @@
 import './index.css';
 import { v4 as uuidv4 } from 'uuid';
-import toggleIcon from '../assets/toggleIcon.svg';
+
+const toggleIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+<path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z" />
+</svg>
+`;
 
 /**
  * ToggleBlock for the Editor.js
@@ -63,14 +67,9 @@ export default class ToggleBlock {
     this.itemsId = [];
     this.api = api;
     const {
-      toolbar: {
-        close,
-      },
+      toolbar: { close },
       blocks: {
-        getCurrentBlockIndex,
-        getBlockByIndex,
-        getBlocksCount,
-        move,
+        getCurrentBlockIndex, getBlockByIndex, getBlocksCount, move,
       },
     } = this.api;
     this.close = close;
@@ -83,7 +82,6 @@ export default class ToggleBlock {
     this.placeholder = config?.placeholder ?? 'Toggle';
     this.defaultContent = config?.defaultContent ?? 'Empty toggle. Click or drop blocks inside.';
     this.addListeners();
-    this.addSupportForUndoAndRedoActions();
     this.addSupportForDragAndDropActions();
     this.addSupportForCopyAndPasteAction();
   }
@@ -103,7 +101,10 @@ export default class ToggleBlock {
    * @returns {boolean}
    */
   isAToggleRoot(holder) {
-    return holder.classList.contains('toggle-block__selector') || Boolean(holder.querySelector('.toggle-block__selector'));
+    return (
+      holder.classList.contains('toggle-block__selector')
+      || Boolean(holder.querySelector('.toggle-block__selector'))
+    );
   }
 
   /**
@@ -136,9 +137,18 @@ export default class ToggleBlock {
       }
 
       const newText = content.slice(end + 4, currentPosition.focusOffset);
-      blockContent.children[1].innerHTML = content.slice(currentPosition.focusOffset, end);
+      blockContent.children[1].innerHTML = content.slice(
+        currentPosition.focusOffset,
+        end,
+      );
 
-      this.api.blocks.insert('paragraph', { text: newText }, {}, originalIndex + 1, 1);
+      this.api.blocks.insert(
+        'paragraph',
+        { text: newText },
+        {},
+        originalIndex + 1,
+        1,
+      );
       this.setAttributesToNewBlock();
     }
   }
@@ -258,9 +268,12 @@ export default class ToggleBlock {
     this.wrapper.classList.add('toggle-block__selector');
     this.wrapper.id = this.data.fk;
 
+    const header = document.createElement('div');
     const icon = document.createElement('span');
     const input = document.createElement('div');
     const defaultContent = document.createElement('div');
+
+    header.classList.add('toggle-block__header');
 
     icon.classList.add('toggle-block__icon');
     icon.innerHTML = toggleIcon;
@@ -272,7 +285,10 @@ export default class ToggleBlock {
     // Events
     if (!this.readOnly) {
       // Events to create other blocks and destroy the toggle
-      input.addEventListener('keyup', this.createParagraphFromToggleRoot.bind(this));
+      input.addEventListener(
+        'keyup',
+        this.createParagraphFromToggleRoot.bind(this),
+      );
       input.addEventListener('keydown', this.removeToggle.bind(this));
 
       // Sets the focus at the end of the text when a nested block is deleted with the backspace key
@@ -287,16 +303,24 @@ export default class ToggleBlock {
       input.addEventListener('focusout', this.setDefaultContent.bind(this));
 
       // Event to add a block when the default content is clicked
-      defaultContent.addEventListener('click', this.clickInDefaultContent.bind(this));
+      defaultContent.addEventListener(
+        'click',
+        this.clickInDefaultContent.bind(this),
+      );
 
       input.addEventListener('focus', this.setNestedBlockAttributes.bind(this));
     }
 
-    defaultContent.classList.add('toggle-block__content-default', 'toggle-block__hidden');
+    defaultContent.classList.add(
+      'toggle-block__content-default',
+      'toggle-block__hidden',
+    );
     defaultContent.innerHTML = this.defaultContent;
 
-    this.wrapper.appendChild(icon);
-    this.wrapper.appendChild(input);
+    header.appendChild(icon);
+    header.appendChild(input);
+
+    this.wrapper.appendChild(header);
     this.wrapper.appendChild(defaultContent);
   }
 
@@ -331,13 +355,15 @@ export default class ToggleBlock {
    * otherwise it removes it.
    */
   setDefaultContent() {
-    const children = document.querySelectorAll(`div[foreignKey="${this.wrapper.id}"]`);
+    const children = document.querySelectorAll(
+      `div[foreignKey="${this.wrapper.id}"]`,
+    );
     const { firstChild, lastChild } = this.wrapper;
     const { status } = this.data;
-    const value = (children.length > 0 || status === 'closed');
+    const value = children.length > 0 || status === 'closed';
 
     lastChild.classList.toggle('toggle-block__hidden', value);
-    firstChild.style.color = (children.length === 0) ? 'gray' : 'black';
+    firstChild.lastChild.style.color = children.length === 0 ? 'gray' : 'black';
   }
 
   /**
@@ -357,32 +383,42 @@ export default class ToggleBlock {
         const index = this.api.blocks.getCurrentBlockIndex();
         const breakLine = content.indexOf('<br>');
         const end = breakLine === -1 ? content.length : breakLine;
-        const blocks = document.querySelectorAll(`div[foreignKey="${this.wrapper.id}"]`);
+        const blocks = document.querySelectorAll(
+          `div[foreignKey="${this.wrapper.id}"]`,
+        );
 
         for (let i = 1; i < blocks.length + 1; i += 1) {
           this.removeAttributesFromNewBlock(index + i);
         }
 
         this.api.blocks.delete(index);
-        this.api.blocks.insert('paragraph', { text: content.slice(0, end) }, {}, index, 1);
+        this.api.blocks.insert(
+          'paragraph',
+          { text: content.slice(0, end) },
+          {},
+          index,
+          1,
+        );
         this.api.caret.setToBlock(index);
       }
     }
   }
 
   /**
-  * Returns the toggle's root index, given the index of one of its children
-  *
-  * @param {number} entryIndex - block index
-  * @param {String} fk - The block's foreign key
-  * @returns {number} The Toggle's root index
-  */
+   * Returns the toggle's root index, given the index of one of its children
+   *
+   * @param {number} entryIndex - block index
+   * @param {String} fk - The block's foreign key
+   * @returns {number} The Toggle's root index
+   */
   findToggleRootIndex(entryIndex, fk) {
     const block = this.getBlockByIndex(entryIndex);
     const { holder } = block;
 
     if (this.isAToggleRoot(holder)) {
-      const id = holder.querySelector('.toggle-block__selector').getAttribute('id');
+      const id = holder
+        .querySelector('.toggle-block__selector')
+        .getAttribute('id');
       if (fk === id) {
         return entryIndex;
       }
@@ -410,7 +446,9 @@ export default class ToggleBlock {
         const items = this.getDescendantsNumber(fk);
         const destiny = parentIndex + items;
 
-        if (items > 1) { this.api.blocks.move(destiny, entryIndex); }
+        if (items > 1) {
+          this.api.blocks.move(destiny, entryIndex);
+        }
 
         setTimeout(() => this.removeAttributesFromNewBlock(destiny), 200);
       }
@@ -477,7 +515,9 @@ export default class ToggleBlock {
     let toggleRoot;
 
     if (this.readOnly) {
-      const redactor = document.getElementsByClassName('codex-editor__redactor')[0];
+      const redactor = document.getElementsByClassName(
+        'codex-editor__redactor',
+      )[0];
       const { children } = redactor;
       const { length } = children;
 
@@ -495,7 +535,7 @@ export default class ToggleBlock {
       const toggle = this.wrapper.children[1];
       let currentBlock = {};
       let index = this.api.blocks.getCurrentBlockIndex();
-      const delta = (index === blocksInEditor - 1) ? -1 : 1;
+      const delta = index === blocksInEditor - 1 ? -1 : 1;
 
       while (currentBlock[1] !== toggle) {
         toggleRoot = index;
@@ -510,7 +550,11 @@ export default class ToggleBlock {
     }
 
     if (toggleRoot + this.data.items < blocksInEditor) {
-      for (let i = toggleRoot + 1, j = 0; i <= toggleRoot + this.data.items; i += 1) {
+      for (
+        let i = toggleRoot + 1, j = 0;
+        i <= toggleRoot + this.data.items;
+        i += 1
+      ) {
         const block = this.api.blocks.getBlockByIndex(i);
         const { holder } = block;
         const cover = holder.firstChild;
@@ -558,7 +602,9 @@ export default class ToggleBlock {
       svg.style.transform = 'rotate(0deg)';
     }
 
-    const toggleBlock = this.api.blocks.getBlockByIndex(this.api.blocks.getCurrentBlockIndex());
+    const toggleBlock = this.api.blocks.getBlockByIndex(
+      this.api.blocks.getCurrentBlockIndex(),
+    );
     toggleBlock.holder.setAttribute('status', this.data.status);
   }
 
@@ -570,7 +616,9 @@ export default class ToggleBlock {
    * @param {number} index - toggle index
    */
   hideAndShowBlocks(foreignKey = this.wrapper.id, value = this.data.status) {
-    const children = document.querySelectorAll(`div[foreignKey="${foreignKey}"]`);
+    const children = document.querySelectorAll(
+      `div[foreignKey="${foreignKey}"]`,
+    );
     const { length } = children;
 
     if (length > 0) {
@@ -599,14 +647,15 @@ export default class ToggleBlock {
   save(blockContent) {
     const id = blockContent.getAttribute('id');
     const { children } = blockContent;
-    const caption = children[1].innerHTML;
+    const caption = children[0].children[1].innerHTML;
     const blocks = document.querySelectorAll(`div[foreignKey="${id}"]`);
     this.data.fk = id;
 
-    return Object.assign(this.data, {
+    return {
+      ...this.data,
       text: caption,
       items: blocks.length,
-    });
+    };
   }
 
   /**
@@ -619,7 +668,9 @@ export default class ToggleBlock {
     listChildren.forEach((child) => {
       // Evaluate if the child is a toggle
       if (child.hasAttribute('status')) {
-        const childId = child.querySelector('.toggle-block__selector').getAttribute('id');
+        const childId = child
+          .querySelector('.toggle-block__selector')
+          .getAttribute('id');
         counter += this.getDescendantsNumber(childId);
       }
       counter += 1;
@@ -637,7 +688,9 @@ export default class ToggleBlock {
       child.classList.add('ce-block--selected');
       // Evaluate if the child is a toggle, then highlight also its children
       if (child.hasAttribute('status')) {
-        const childId = child.querySelector('.toggle-block__selector').getAttribute('id');
+        const childId = child
+          .querySelector('.toggle-block__selector')
+          .getAttribute('id');
         this.highlightToggleItems(childId);
       }
     });
@@ -720,7 +773,7 @@ export default class ToggleBlock {
       // Move back the root of the Toggle to its initial position
       this.move(toggleInitialIndex, currentToggleIndex);
 
-      if (toggleInitialIndex >= 0 && toggleEndIndex <= (blocks - 1)) {
+      if (toggleInitialIndex >= 0 && toggleEndIndex <= blocks - 1) {
         if (direction === 0) {
           this.moveDown(toggleInitialIndex, toggleEndIndex);
         } else {
@@ -744,9 +797,16 @@ export default class ToggleBlock {
 
     // Evaluate if the block is a toggle to move its children
     if (blockAfterToggle.name === 'toggle') {
-      const id = holder.querySelector('.toggle-block__selector').getAttribute('id');
+      const id = holder
+        .querySelector('.toggle-block__selector')
+        .getAttribute('id');
       const children = this.getDescendantsNumber(id);
-      this.moveDescendants(children, toggleInitialIndex + 1, blockAfterToggleIndex + 1, 0);
+      this.moveDescendants(
+        children,
+        toggleInitialIndex + 1,
+        blockAfterToggleIndex + 1,
+        0,
+      );
     }
   }
 
@@ -768,9 +828,15 @@ export default class ToggleBlock {
       const currentToggleFk = currentToggle.getAttribute('foreignKey');
       const fk = holder.getAttribute('foreignKey');
       if (fk !== currentToggleFk) {
-        const parentBlockIdx = this.findIndexOfParentBlock(currentToggleFk, fk, toggleInitialIndex);
+        const parentBlockIdx = this.findIndexOfParentBlock(
+          currentToggleFk,
+          fk,
+          toggleInitialIndex,
+        );
         const parentBlock = this.getBlockByIndex(parentBlockIdx).holder;
-        const id = parentBlock.querySelector('.toggle-block__selector').getAttribute('id');
+        const id = parentBlock
+          .querySelector('.toggle-block__selector')
+          .getAttribute('id');
         const children = this.getDescendantsNumber(id);
         this.move(toggleEndIndex, parentBlockIdx);
         this.moveDescendants(children, toggleEndIndex, parentBlockIdx, 1);
@@ -801,7 +867,11 @@ export default class ToggleBlock {
         if (beforeBlock.hasAttribute('foreignKey')) {
           const fk = beforeBlock.getAttribute('foreignKey');
           if (fk !== parentBlockFk) {
-            return this.findIndexOfParentBlock(currentToggleFk, fk, parentBlockIndex);
+            return this.findIndexOfParentBlock(
+              currentToggleFk,
+              fk,
+              parentBlockIndex,
+            );
           }
         }
       }
@@ -835,7 +905,9 @@ export default class ToggleBlock {
    * @param {number} toggleIndex - toggle index
    */
   removeFullToggle(toggleIndex) {
-    const children = document.querySelectorAll(`div[foreignKey="${this.wrapper.id}"]`);
+    const children = document.querySelectorAll(
+      `div[foreignKey="${this.wrapper.id}"]`,
+    );
     const { length } = children;
 
     for (let i = toggleIndex; i < toggleIndex + length; i += 1) {
@@ -857,32 +929,14 @@ export default class ToggleBlock {
 
         if (e.code === 'Space') {
           this.createToggleWithShortcut(blockContainer);
-        } else if (currentBlock > 0 && !this.isPartOfAToggle(currentBlockContainer) && e.code === 'Tab') {
+        } else if (
+          currentBlock > 0
+          && !this.isPartOfAToggle(currentBlockContainer)
+          && e.code === 'Tab'
+        ) {
           this.nestBlock(currentBlockContainer);
         }
       });
-    }
-  }
-
-  /**
-   * Adds mutation observer to restore the item attributes
-   * when the undo action is executed and they're lost.
-   */
-  addSupportForUndoAndRedoActions() {
-    if (!this.readOnly) {
-      const target = document.querySelector('div.codex-editor__redactor');
-
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.type === 'childList') {
-            setTimeout(this.restoreItemAttributes.bind(this, mutation));
-          }
-        });
-      });
-
-      const config = { attributes: true, childList: true, characterData: true };
-
-      observer.observe(target, config);
     }
   }
 
@@ -898,12 +952,13 @@ export default class ToggleBlock {
     if (!parentID || !targetFK) return false; // No parent or no target
     if (parentID === targetFK) return true; // Direct child of the toggle
 
-    return [...document.querySelectorAll(`div[foreignKey="${parentID}"]`)]
-      .some((child) => {
+    return [...document.querySelectorAll(`div[foreignKey="${parentID}"]`)].some(
+      (child) => {
         const toggle = child.querySelector('.toggle-block__selector');
         if (!toggle) return false;
         return this.isChild(toggle.getAttribute('id'), targetFK);
-      });
+      },
+    );
   };
 
   /**
@@ -918,22 +973,31 @@ export default class ToggleBlock {
       }
 
       // Set status in attribute to a proper hide and show
-      const toggleBlock = document.querySelector(`#${this.wrapper.id}`).parentNode.parentNode;
+      const toggleBlock = document.querySelector(`#${this.wrapper.id}`)
+        .parentNode.parentNode;
       toggleBlock.setAttribute('status', this.data.status);
 
-      const settingsButton = document.querySelector('.ce-toolbar__settings-btn');
+      const settingsButton = document.querySelector(
+        '.ce-toolbar__settings-btn',
+      );
       settingsButton.setAttribute('draggable', 'true');
       settingsButton.addEventListener('dragstart', () => {
         this.startBlock = this.api.blocks.getCurrentBlockIndex();
-        this.nameDragged = this.api.blocks.getBlockByIndex(this.startBlock).name;
-        this.holderDragged = this.api.blocks.getBlockByIndex(this.startBlock).holder;
+        this.nameDragged = this.api.blocks.getBlockByIndex(
+          this.startBlock,
+        ).name;
+        this.holderDragged = this.api.blocks.getBlockByIndex(
+          this.startBlock,
+        ).holder;
       });
 
       document.addEventListener('drop', (event) => {
         // Get the position when item was dropped
         const { target } = event;
         if (document.contains(target)) {
-          const dropTarget = target.classList.contains('ce-block') ? target : target.closest('.ce-block');
+          const dropTarget = target.classList.contains('ce-block')
+            ? target
+            : target.closest('.ce-block');
           if (dropTarget && dropTarget !== this.holderDragged) {
             let endBlock = this.getIndex(dropTarget);
 
@@ -941,20 +1005,30 @@ export default class ToggleBlock {
             endBlock = this.startBlock < endBlock ? endBlock + 1 : endBlock;
 
             // Check if the item dropped is another toggle
-            const isTargetAToggle = dropTarget.querySelectorAll('.toggle-block__selector').length > 0
-              || dropTarget.getAttribute('foreignKey') !== null;
+            const isTargetAToggle = dropTarget.querySelectorAll('.toggle-block__selector').length
+                > 0 || dropTarget.getAttribute('foreignKey') !== null;
 
             setTimeout(() => {
               // Verify if the item dropped is the toggle
               if (this.nameDragged === 'toggle') {
                 // Verify if the toggle dropped is the same of this eventListener
-                const currentToggleDropped = this.holderDragged.querySelector(`#${this.wrapper.id}`);
+                const currentToggleDropped = this.holderDragged.querySelector(
+                  `#${this.wrapper.id}`,
+                );
 
                 if (currentToggleDropped) {
                   // Check if the toggle dropped was not dropped in its children
-                  if (!this.isChild(currentToggleDropped.getAttribute('id'), dropTarget.getAttribute('foreignKey'))) {
+                  if (
+                    !this.isChild(
+                      currentToggleDropped.getAttribute('id'),
+                      dropTarget.getAttribute('foreignKey'),
+                    )
+                  ) {
                     // If is a toggle we have to add the attributes to make it a part of the toggle
-                    this.assignToggleItemAttributes(isTargetAToggle, dropTarget);
+                    this.assignToggleItemAttributes(
+                      isTargetAToggle,
+                      dropTarget,
+                    );
                     this.moveChildren(endBlock);
                   } else {
                     // If we are dropping in the toggle children,
@@ -1024,42 +1098,21 @@ export default class ToggleBlock {
   }
 
   /**
-   * Restores the item attributes to nested blocks.
-   *
-   * @param {HTMLDivElement} mutation - Html element removed or inserted
-   */
-  restoreItemAttributes(mutation) {
-    if (this.wrapper !== undefined) {
-      const index = this.api.blocks.getCurrentBlockIndex();
-      const block = this.api.blocks.getBlockByIndex(index);
-      const { holder } = block;
-      const currentBlockValidation = !this.isPartOfAToggle(holder);
-      const mutatedBlock = mutation.removedNodes[0];
-
-      if (this.itemsId.includes(block.id) && currentBlockValidation) {
-        this.setAttributesToNewBlock(index);
-      } else if (mutatedBlock && this.isPartOfAToggle(mutatedBlock) && currentBlockValidation) {
-        const blockCover = holder.firstChild;
-        const blockContainer = blockCover.firstChild;
-
-        if (!this.isPartOfAToggle(blockContainer)) {
-          this.setAttributesToNewBlock(index);
-          this.itemsId[index] = block.id;
-        }
-      }
-    }
-  }
-
-  /**
    * Creates a toggle through the '>' char and the 'Space' key
    */
   createToggleWithShortcut(blockContainer) {
     const content = blockContainer.textContent;
 
-    if ((content[0] === '>') && !this.isPartOfAToggle(blockContainer)) {
+    if (content[0] === '>' && !this.isPartOfAToggle(blockContainer)) {
       const blockCaller = this.api.blocks.getCurrentBlockIndex();
 
-      this.api.blocks.insert('toggle', { text: content.slice(2) }, this.api, blockCaller, true);
+      this.api.blocks.insert(
+        'toggle',
+        { text: content.slice(2) },
+        this.api,
+        blockCaller,
+        true,
+      );
       this.api.blocks.delete(blockCaller + 1);
       this.api.caret.setToBlock(blockCaller);
     }
@@ -1073,7 +1126,10 @@ export default class ToggleBlock {
     const previousCover = previousBlock.firstChild;
     const previousContainer = previousCover.firstChild;
 
-    if (this.isPartOfAToggle(previousContainer) || this.isPartOfAToggle(previousBlock)) {
+    if (
+      this.isPartOfAToggle(previousContainer)
+      || this.isPartOfAToggle(previousBlock)
+    ) {
       const foreignId = previousBlock.getAttribute('foreignKey');
       const toggleId = previousContainer.getAttribute('id');
       const foreignKey = foreignId || toggleId;
@@ -1086,8 +1142,8 @@ export default class ToggleBlock {
   }
 
   /**
-  * Sets the required attributes to convert an external block
-  * of the toggle into a block inside the toggle.
+   * Sets the required attributes to convert an external block
+   * of the toggle into a block inside the toggle.
    */
   setNestedBlockAttributes() {
     const blockIndex = this.api.blocks.getCurrentBlockIndex();
@@ -1113,7 +1169,9 @@ export default class ToggleBlock {
    */
   isPartOfAToggle(block) {
     const classes = Array.from(block.classList);
-    const answer = classes.includes('toggle-block__item') || (classes.includes('toggle-block__input') || classes.includes('toggle-block__selector'));
+    const answer = classes.includes('toggle-block__item')
+      || classes.includes('toggle-block__input')
+      || classes.includes('toggle-block__selector');
 
     return answer;
   }
@@ -1125,18 +1183,98 @@ export default class ToggleBlock {
   addSupportForCopyAndPasteAction() {
     if (!this.readOnly) {
       const target = document.querySelector('div.codex-editor__redactor');
+      let timeout = null;
+      let pastedHolder = null;
+      let locked = false;
+
+      const clearTimer = () => {
+        pastedHolder = null;
+        clearTimeout(timeout);
+      };
+
+      target.addEventListener('paste', () => {
+        const index = this.api.blocks.getCurrentBlockIndex();
+        const { holder } = this.api.blocks.getBlockByIndex(index);
+
+        if (this.isPartOfAToggle(holder)) {
+          pastedHolder = holder;
+
+          timeout = setTimeout(() => {
+            clearTimer();
+          }, 10);
+        }
+      });
+
+      const updateBlocks = (data) => {
+        locked = true;
+        for (let i = 0; i < data.blocks.length; i += 1) {
+          const currentBlock = data.blocks[i];
+          if (currentBlock.type === 'toggle' && currentBlock.data.items) {
+            const numOfItems = currentBlock.data.items;
+            const items = data.blocks.slice(i + 1, i + numOfItems + 1);
+
+            setTimeout(() => {
+              this.convertBlockIdsToToggleItem(
+                items.map((item) => item.id),
+                currentBlock.data.fk,
+              );
+            });
+            i += numOfItems;
+          }
+        }
+
+        setTimeout(() => {
+          locked = false;
+        }, 10);
+      };
+
+      this.api.events.on('undo', updateBlocks);
+      this.api.events.on('redo', updateBlocks);
 
       const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.type === 'childList') {
-            setTimeout(this.resetIdToCopiedBlock.bind(this, mutation));
-          }
-        });
+        if (locked) return;
+        if (pastedHolder) {
+          const fk = pastedHolder.getAttribute('foreignKey');
+          setTimeout(() => {
+            this.convertBlockToToggleItem(fk);
+          }, 50);
+        } else {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+              setTimeout(this.resetIdToCopiedBlock.bind(this, mutation));
+            }
+          });
+        }
+
+        clearTimer();
       });
 
       const config = { attributes: true, childList: true, characterData: true };
 
       observer.observe(target, config);
+    }
+  }
+
+  convertBlockIdsToToggleItem(ids, fk) {
+    ids.forEach((id) => {
+      const newId = uuidv4();
+      const { holder } = this.api.blocks.getById(id);
+
+      holder.setAttribute('foreignKey', fk);
+      holder.setAttribute('id', newId);
+
+      holder.classList.add('toggle-block__item');
+    });
+  }
+
+  convertBlockToToggleItem(fk) {
+    if (this.wrapper !== undefined) {
+      const lastIndex = this.api.blocks.getCurrentBlockIndex();
+      const root = this.findToggleRootIndex(lastIndex, fk);
+
+      for (let i = root + 1; i <= lastIndex; i += 1) {
+        this.setAttributesToNewBlock(i, fk);
+      }
     }
   }
 

@@ -1,14 +1,18 @@
-.toggle-block__selector > div {
-  vertical-align: middle;
-  display: inline-block;
-  padding: 1% 0 1% 0;
-  outline: none;
-  border: none;
-  width: 90%;
+.toggle-block__selector {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
 }
 
 .toggle-block__selector br {
   display: none;
+}
+
+.toggle-block__header {
+  display: flex;
+  flex-direction: row;
+  column-gap: 8px;
 }
 
 .toggle-block__icon > svg {
@@ -28,7 +32,13 @@
 }
 
 .toggle-block__input {
-  margin-left: 5px;
+  flex-grow: 1;
+
+  vertical-align: middle;
+  display: inline-block;
+  padding: 1% 0 1% 0;
+  outline: none;
+  border: none;
 }
 
 .toggle-block__input:empty:before {
