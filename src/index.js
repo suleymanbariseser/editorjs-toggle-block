@@ -164,12 +164,11 @@ export default class ToggleBlock {
    * Gets the index of the new block, then assigns the required properties,
    * and finally sends the focus.
    */
-  setAttributesToNewBlock(entryIndex = null, foreignKey = this.wrapper.id) {
+  setAttributesToNewBlock(entryIndex = null, foreignKey = this.wrapper.id, block = null) {
     const index = entryIndex === null ? this.api.blocks.getCurrentBlockIndex() : entryIndex;
+    const newBlock = block || this.api.blocks.getBlockByIndex(index);
+
     const id = uuidv4();
-
-    const newBlock = this.api.blocks.getBlockByIndex(index);
-
     if (!this.itemsId.includes(newBlock.id)) {
       this.itemsId.splice(index - 1, 0, newBlock.id);
     }
@@ -181,7 +180,7 @@ export default class ToggleBlock {
     holder.setAttribute('foreignKey', foreignKey);
     holder.setAttribute('id', id);
 
-    holder.classList.add('toggle-block__item');
+    setTimeout(() => holder.classList.add('toggle-block__item'));
 
     if (!this.readOnly) {
       holder.onkeydown = this.setEventsToNestedBlock.bind(this);
@@ -220,21 +219,8 @@ export default class ToggleBlock {
    */
   removeBlock(holder, id, cursorPosition) {
     if (cursorPosition === 0) {
-      const currentBlock = holder.nextSibling;
-      const blockCover = currentBlock.firstChild;
-      const blockContent = blockCover.firstChild;
-      const oldContent = blockContent.innerHTML;
-
-      const toggleCover = holder.firstChild;
-      const toggleContent = toggleCover.firstChild;
-
-      toggleContent.children[1].innerHTML += oldContent;
-
       const position = this.itemsId.indexOf(id);
       this.itemsId.splice(position, 1);
-
-      const togglePosition = this.api.blocks.getCurrentBlockIndex();
-      this.api.blocks.delete(togglePosition + 1);
     }
   }
 
@@ -540,6 +526,7 @@ export default class ToggleBlock {
       while (currentBlock[1] !== toggle) {
         toggleRoot = index;
         const block = this.api.blocks.getBlockByIndex(toggleRoot);
+        if (!block) break;
         const { holder } = block;
         const blockCover = holder.firstChild;
         const blockContent = blockCover.firstChild;
@@ -1169,11 +1156,13 @@ export default class ToggleBlock {
    */
   isPartOfAToggle(block) {
     const classes = Array.from(block.classList);
-    const answer = classes.includes('toggle-block__item')
-      || classes.includes('toggle-block__input')
-      || classes.includes('toggle-block__selector');
+    const classNamesToCheck = ['toggle-block__item', 'toggle-block__input', 'toggle-block__selector'];
+    const isToggleChild = classNamesToCheck.some(
+      (className) => block.getElementsByClassName(className).length !== 0,
+    );
+    const isToggle = classNamesToCheck.some((className) => classes.includes(className));
 
-    return answer;
+    return isToggle || isToggleChild;
   }
 
   /**
