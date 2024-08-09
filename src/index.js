@@ -82,6 +82,7 @@ export default class ToggleBlock {
     this.placeholder = config?.placeholder ?? 'Toggle';
     this.defaultContent = config?.defaultContent ?? 'Empty toggle. Click or drop blocks inside.';
     this.addListeners();
+    this.addSupportForNewBlocks();
     this.addSupportForDragAndDropActions();
     this.addSupportForCopyAndPasteAction();
   }
@@ -927,6 +928,45 @@ export default class ToggleBlock {
     }
   }
 
+  /**
+   * Adds mutation observer to restore the item attributes
+   * when the undo action is executed and they're lost.
+   */
+  addSupportForNewBlocks() {
+    if (!this.readOnly) {
+      const target = document.querySelector('div.codex-editor__redactor');
+      let locked = false;
+      let timer = null;
+
+      const lockMutation = () => {
+        if (timer) clearTimeout(timer);
+
+        locked = true;
+
+        timer = setTimeout(() => {
+          locked = false;
+        }, 50);
+      };
+
+      this.api.events.on('undo', lockMutation);
+      this.api.events.on('redo', lockMutation);
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          // lock the mutation to avoid duplicated undo and redo
+          if (locked) return;
+          if (mutation.type === 'childList') {
+            setTimeout(this.restoreItemAttributes.bind(this, mutation));
+          }
+        });
+      });
+
+      const config = { attributes: true, childList: true, characterData: true };
+
+      observer.observe(target, config);
+    }
+  }
+
   getIndex = (target) => Array.from(target.parentNode.children).indexOf(target);
 
   /**
@@ -1085,6 +1125,39 @@ export default class ToggleBlock {
   }
 
   /**
+   * Restores the item attributes to nested blocks.
+   *
+   * @param {HTMLDivElement} mutation - Html element removed or inserted
+   */
+  restoreItemAttributes(mutation) {
+    if (this.wrapper !== undefined) {
+      const index = this.api.blocks.getCurrentBlockIndex();
+      const block = this.api.blocks.getBlockByIndex(index);
+      const { holder } = block;
+      const currentBlockValidation = !this.isPartOfAToggle(holder);
+      const { length: toggleItemsCount } = this.itemsId;
+      const { length: existingToggleItemsCount } = document.querySelectorAll(
+        `div[foreignKey="${this.data.fk}"]`,
+      );
+
+      if (this.itemsId.includes(block.id) && currentBlockValidation) {
+        this.setAttributesToNewBlock(index);
+      } else if (
+        mutation.addedNodes[0]
+        && mutation?.previousSibling
+        && this.isPartOfAToggle(mutation.previousSibling)
+        && !this.isPartOfAToggle(mutation.addedNodes[0])
+        && toggleItemsCount > existingToggleItemsCount
+      ) {
+        const { id: addedBlockId } = mutation.addedNodes[0];
+        const addedBlock = this.api.blocks.getById(addedBlockId);
+        this.setAttributesToNewBlock(null, this.wrapper.id, addedBlock);
+        this.itemsId[index] = block.id;
+      }
+    }
+  }
+
+  /**
    * Creates a toggle through the '>' char and the 'Space' key
    */
   createToggleWithShortcut(blockContainer) {
@@ -1156,7 +1229,11 @@ export default class ToggleBlock {
    */
   isPartOfAToggle(block) {
     const classes = Array.from(block.classList);
-    const classNamesToCheck = ['toggle-block__item', 'toggle-block__input', 'toggle-block__selector'];
+    const classNamesToCheck = [
+      'toggle-block__item',
+      'toggle-block__input',
+      'toggle-block__selector',
+    ];
     const isToggleChild = classNamesToCheck.some(
       (className) => block.getElementsByClassName(className).length !== 0,
     );
