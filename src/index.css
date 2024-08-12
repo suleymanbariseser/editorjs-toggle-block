@@ -12,7 +12,16 @@
 .toggle-block__header {
   display: flex;
   flex-direction: row;
+  align-items: center;
   column-gap: 8px;
+}
+
+.toggle-block__icon {
+  height: 15px;
+  width: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle-block__icon > svg {
