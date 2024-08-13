@@ -81,6 +81,7 @@ export default class ToggleBlock {
     this.readOnly = readOnly || false;
     this.placeholder = config?.placeholder ?? 'Toggle';
     this.defaultContent = config?.defaultContent ?? 'Empty toggle. Click or drop blocks inside.';
+    this.observers = new Set();
     this.addListeners();
     this.addSupportForNewBlocks();
     this.addSupportForDragAndDropActions();
@@ -934,36 +935,12 @@ export default class ToggleBlock {
    */
   addSupportForNewBlocks() {
     if (!this.readOnly) {
-      const target = document.querySelector('div.codex-editor__redactor');
-      let locked = false;
-      let timer = null;
-
-      const lockMutation = () => {
-        if (timer) clearTimeout(timer);
-
-        locked = true;
-
-        timer = setTimeout(() => {
-          locked = false;
-        }, 50);
-      };
-
-      this.api.events.on('undo', lockMutation);
-      this.api.events.on('redo', lockMutation);
-
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          // lock the mutation to avoid duplicated undo and redo
-          if (locked) return;
-          if (mutation.type === 'childList') {
-            setTimeout(this.restoreItemAttributes.bind(this, mutation));
-          }
-        });
+      // TODO - check overlap with copy and paste
+      this.api.events.on('block changed', ({ event }) => {
+        if (event.type === 'block-added') {
+          setTimeout(this.restoreItemAttributes.bind(this, event.detail.target.holder));
+        }
       });
-
-      const config = { attributes: true, childList: true, characterData: true };
-
-      observer.observe(target, config);
     }
   }
 
@@ -1127,9 +1104,9 @@ export default class ToggleBlock {
   /**
    * Restores the item attributes to nested blocks.
    *
-   * @param {HTMLDivElement} mutation - Html element removed or inserted
+   * @param {HTMLDivElement} element - Html element removed or inserted
    */
-  restoreItemAttributes(mutation) {
+  restoreItemAttributes(element) {
     if (this.wrapper !== undefined) {
       const index = this.api.blocks.getCurrentBlockIndex();
       const block = this.api.blocks.getBlockByIndex(index);
@@ -1142,14 +1119,16 @@ export default class ToggleBlock {
 
       if (this.itemsId.includes(block.id) && currentBlockValidation) {
         this.setAttributesToNewBlock(index);
-      } else if (
-        mutation.addedNodes[0]
-        && mutation?.previousSibling
-        && this.isPartOfAToggle(mutation.previousSibling)
-        && !this.isPartOfAToggle(mutation.addedNodes[0])
+        return;
+      }
+
+      if (
+        element?.previousSibling
+        && this.isPartOfAToggle(element.previousSibling)
+        && !this.isPartOfAToggle(element)
         && toggleItemsCount > existingToggleItemsCount
       ) {
-        const { id: addedBlockId } = mutation.addedNodes[0];
+        const { id: addedBlockId } = element;
         const addedBlock = this.api.blocks.getById(addedBlockId);
         this.setAttributesToNewBlock(null, this.wrapper.id, addedBlock);
         this.itemsId[index] = block.id;
@@ -1297,19 +1276,13 @@ export default class ToggleBlock {
       this.api.events.on('undo', updateBlocks);
       this.api.events.on('redo', updateBlocks);
 
-      const observer = new MutationObserver((mutations) => {
+      const observer = new MutationObserver(() => {
         if (locked) return;
         if (pastedHolder) {
           const fk = pastedHolder.getAttribute('foreignKey');
           setTimeout(() => {
             this.convertBlockToToggleItem(fk);
           }, 50);
-        } else {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'childList') {
-              setTimeout(this.resetIdToCopiedBlock.bind(this, mutation));
-            }
-          });
         }
 
         clearTimer();
@@ -1318,6 +1291,7 @@ export default class ToggleBlock {
       const config = { attributes: true, childList: true, characterData: true };
 
       observer.observe(target, config);
+      this.observers.add(observer);
     }
   }
 
@@ -1374,5 +1348,10 @@ export default class ToggleBlock {
         }
       }
     }
+  }
+
+  destroy() {
+    this.observers.forEach((observer) => observer.disconnect());
+    this.observers.clear();
   }
 }
