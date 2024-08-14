@@ -647,6 +647,12 @@ export default class ToggleBlock {
     };
   }
 
+  static get sanitize() {
+    return {
+      br: false,
+    };
+  }
+
   /**
    * Return the number of blocks inside the root Toggle
    * @param {string} fk - The id of the root Toggle
