@@ -166,7 +166,11 @@ export default class ToggleBlock {
    * Gets the index of the new block, then assigns the required properties,
    * and finally sends the focus.
    */
-  setAttributesToNewBlock(entryIndex = null, foreignKey = this.wrapper.id, block = null) {
+  setAttributesToNewBlock(
+    entryIndex = null,
+    foreignKey = this.wrapper.id,
+    block = null,
+  ) {
     const index = entryIndex === null ? this.api.blocks.getCurrentBlockIndex() : entryIndex;
     const newBlock = block || this.api.blocks.getBlockByIndex(index);
 
@@ -944,7 +948,13 @@ export default class ToggleBlock {
       // TODO - check overlap with copy and paste
       this.api.events.on('block changed', ({ event }) => {
         if (event.type === 'block-added') {
-          setTimeout(this.restoreItemAttributes.bind(this, event.detail.target.holder));
+          setTimeout(
+            this.restoreItemAttributes.bind(
+              this,
+              event.detail.target.holder,
+              event.detail.manual,
+            ),
+          );
         }
       });
     }
@@ -1111,8 +1121,9 @@ export default class ToggleBlock {
    * Restores the item attributes to nested blocks.
    *
    * @param {HTMLDivElement} element - Html element removed or inserted
+   * @param {boolean} manual - If the action was manual
    */
-  restoreItemAttributes(element) {
+  restoreItemAttributes(element, manual = false) {
     if (this.wrapper !== undefined) {
       const index = this.api.blocks.getCurrentBlockIndex();
       const block = this.api.blocks.getBlockByIndex(index);
@@ -1132,7 +1143,7 @@ export default class ToggleBlock {
         element?.previousSibling
         && this.isPartOfAToggle(element.previousSibling)
         && !this.isPartOfAToggle(element)
-        && toggleItemsCount > existingToggleItemsCount
+        && (toggleItemsCount > existingToggleItemsCount || manual)
       ) {
         const { id: addedBlockId } = element;
         const addedBlock = this.api.blocks.getById(addedBlockId);
